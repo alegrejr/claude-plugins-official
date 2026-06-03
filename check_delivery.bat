@@ -6,14 +6,11 @@ set "BATDIR=%~dp0"
 
 if "!DELIVERY!"=="" (
     echo Usage: check_delivery.bat "C:\path\to\delivery\folder"
-    pause
-    exit /b 1
+    pause & exit /b 1
 )
-
 if not exist "!DELIVERY!" (
     echo Folder not found: !DELIVERY!
-    pause
-    exit /b 1
+    pause & exit /b 1
 )
 
 set "hh=%time:~0,2%"
@@ -21,85 +18,52 @@ set "mm=%time:~3,2%"
 set "hh=!hh: =0!"
 set "ts=%date:~-4,4%%date:~-7,2%%date:~0,2%_!hh!!mm!"
 set "REPORT=%BATDIR%delivery_report_!ts!.txt"
-
 if exist "!REPORT!" del "!REPORT!"
 
 set "present=0"
 set "empty=0"
 set "missing=0"
-set "extra=0"
-set "total_expected=10"
-
-set "f1=1_CONTROL SURVEY"
-set "f2=2_RW MAP"
-set "f3=3_MONUMENTATION MAP"
-set "f4=4_GPK"
-set "f5=5_QAQC"
-set "f6=6_Research"
-set "f7=7_AERIALS"
-set "f8=8_Surveyor's Report"
-set "f9=9_Roadway"
-set "f10=10_Field data"
+set "alerts=0"
 
 call :wr "========================================"
 call :wr "  DELIVERY CHECK REPORT"
-call :wr "  Folder: !DELIVERY!"
-call :wr "  Date:   %date% %time:~0,5%"
+call :wr "  Project: !DELIVERY!"
+call :wr "  Date:    %date% %time:~0,5%"
 call :wr "========================================"
 call :wr ""
-call :wr "[ EXPECTED FOLDERS ]"
+call :wr "[ FOLDER ANALYSIS ]"
 call :wr ""
 
-for /l %%i in (1,1,10) do (
-    set "fname=!f%%i!"
-    set "fpath=!DELIVERY!\!fname!"
-    if exist "!fpath!\" (
-        set "fcount=0"
-        for /r "!fpath!" %%X in (*.*) do set /a fcount+=1
-        if !fcount! gtr 0 (
-            call :wr "  [OK]      !fname! (!fcount! files)"
-            set /a present+=1
-        ) else (
-            call :wr "  [EMPTY]   !fname! - no files inside"
-            set /a empty+=1
-        )
-    ) else (
-        call :wr "  [MISSING] !fname!"
-        set /a missing+=1
-    )
-)
+call :check "Control Survey"              "CONTROL"      "pdf,dgn"
+call :check "RW Map"                      "RW MAP"       "pdf,dgn"
+call :check "Monumentation Map"           "MONUMENT"     "pdf,dgn"
+call :check "GPK"                         "GPK"          "gpk"
+call :check "QAQC"                        "QAQC"         "*"
+call :check "Research"                    "RESEARCH"     "pdf"
+call :check "Aerials"                     "AERIAL"       "sdw,sid,xml"
+call :check "Surveyor's Report"           "SURVEYOR"     "pdf"
+call :check "Roadway"                     "ROADWAY"      "dgn,pdf"
+call :check "Field Data"                  "FIELD"        "txt,pdf"
+call :check "CCR"                         "CCR"          "pdf"
+call :check "XYZ Printout"               "XYZ"          "txt,xls,xlsx"
+call :check "Baseline Report"             "BASELINE"     "txt"
+call :check "Plats"                       "PLAT"         "pdf"
+call :check "Tentative Sec. Maps"         "TENTATIVE"    "pdf"
+call :check "Deeds"                       "DEED"         "pdf"
+call :check "Fieldbook & Survey Database" "FIELDBOOK"    "txt,pdf"
+call :check "Worksheets"                  "WORKSHEET"    "dgn,pdf"
 
-call :wr ""
-call :wr "[ UNEXPECTED FOLDERS ]"
-call :wr ""
-
-set "extra=0"
-for /d %%D in ("!DELIVERY!\*") do (
-    set "dname=%%~nxD"
-    set "is_expected=0"
-    for /l %%i in (1,1,10) do (
-        if /i "!dname!"=="!f%%i!" set "is_expected=1"
-    )
-    if "!is_expected!"=="0" (
-        set "xcount=0"
-        for /r "%%D" %%X in (*.*) do set /a xcount+=1
-        call :wr "  [EXTRA]   !dname! (!xcount! files)"
-        set /a extra+=1
-    )
-)
-
-if !extra!==0 call :wr "  None"
-
+set "total_expected=18"
 set /a score=present*100/total_expected
 
 call :wr ""
 call :wr "========================================"
 call :wr "  SUMMARY"
 call :wr "========================================"
-call :wr "  Complete with content : !present!/!total_expected!"
-call :wr "  Present but empty     : !empty!"
-call :wr "  Missing               : !missing!"
-call :wr "  Unexpected folders    : !extra!"
+call :wr "  Folders with correct content : !present!/!total_expected!"
+call :wr "  Folders empty                : !empty!"
+call :wr "  Folders missing              : !missing!"
+call :wr "  Folders with unexpected files: !alerts!"
 call :wr ""
 call :wr "  COMPLETION: !score!%%"
 call :wr ""
@@ -107,9 +71,9 @@ call :wr ""
 if !score!==100 (
     call :wr "  STATUS: DELIVERY COMPLETE"
 ) else if !score! geq 80 (
-    call :wr "  STATUS: ALMOST COMPLETE - review missing items"
+    call :wr "  STATUS: ALMOST COMPLETE"
 ) else if !score! geq 50 (
-    call :wr "  STATUS: PARTIAL DELIVERY - significant items missing"
+    call :wr "  STATUS: PARTIAL DELIVERY"
 ) else (
     call :wr "  STATUS: INCOMPLETE DELIVERY"
 )
@@ -125,7 +89,78 @@ pause
 exit /b 0
 
 
+:: ── CHECK CATEGORY ──────────────────────────────────────────────────────────
+:check
+set "catname=%~1"
+set "keyword=%~2"
+set "exts=%~3"
+set "found_folder="
+
+for /d %%D in ("!DELIVERY!\*") do (
+    set "dname=%%~nxD"
+    echo !dname! | findstr /i "%keyword%" >nul 2>&1
+    if !errorlevel!==0 set "found_folder=%%~fD"
+)
+
+if "!found_folder!"=="" (
+    call :wr "  [MISSING]      %catname%"
+    set /a missing+=1
+    exit /b
+)
+
+set "total_files=0"
+set "ok_files=0"
+set "diff_files=0"
+set "diff_exts="
+
+for /r "!found_folder!" %%F in (*.*) do (
+    set /a total_files+=1
+    set "fext=%%~xF"
+    if not "!fext!"=="" (
+        set "fext=!fext:~1!"
+        call :lower fext
+        if "%exts%"=="*" (
+            set /a ok_files+=1
+        ) else (
+            set "matched=0"
+            for %%E in (%exts:,= %) do if /i "!fext!"=="%%E" set "matched=1"
+            if "!matched!"=="1" (
+                set /a ok_files+=1
+            ) else (
+                set /a diff_files+=1
+                echo !diff_exts! | findstr /i "!fext!" >nul 2>&1
+                if !errorlevel!==1 set "diff_exts=!diff_exts! .!fext!"
+            )
+        )
+    )
+)
+
+if !total_files!==0 (
+    call :wr "  [EMPTY]        %catname% - folder found but no files inside"
+    set /a empty+=1
+) else if !ok_files! gtr 0 (
+    if !diff_files! gtr 0 (
+        call :wr "  [OK+ALERT]    %catname% (!total_files! files - also found:!diff_exts!)"
+        set /a present+=1
+    ) else (
+        call :wr "  [OK]          %catname% (!total_files! files)"
+        set /a present+=1
+    )
+) else (
+    call :wr "  [ALERT]        %catname% - !total_files! files found but none match expected (%exts%) - found:!diff_exts!"
+    set /a alerts+=1
+)
+exit /b
+
+
+:: ── WRITE REPORT LINE ────────────────────────────────────────────────────────
 :wr
 echo %~1
 echo %~1>> "!REPORT!"
+exit /b
+
+
+:: ── LOWERCASE ────────────────────────────────────────────────────────────────
+:lower
+for %%A in (a b c d e f g h i j k l m n o p q r s t u v w x y z) do set "%1=!%1:%%A=%%A!"
 exit /b
