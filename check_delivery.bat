@@ -121,7 +121,7 @@ for /r . %%F in (*.*) do (
     if not "!fext!"=="" (
         set "fext=!fext:~1!"
         call :lower fext
-        call :matchext "!fext!" "%exts%" ismatch
+        call :matchext "!fext!" "!exts!" ismatch
         if "!ismatch!"=="1" (
             set /a ok_files+=1
             echo !ok_exts! | findstr /i "!fext!" >nul 2>&1
@@ -157,7 +157,8 @@ exit /b
 :matchext
 set "%~3=0"
 if "%~2"=="*" ( set "%~3=1" & exit /b )
-for %%E in (%~2) do if /i "%~1"=="%%E" set "%~3=1"
+echo  %~2  | findstr /i " %~1 " >nul 2>&1
+if !errorlevel!==0 set "%~3=1"
 exit /b
 
 
