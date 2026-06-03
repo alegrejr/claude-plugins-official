@@ -31,32 +31,32 @@ call :wr "  DELIVERY CHECK REPORT"
 call :wr "  Project: !DELIVERY!"
 call :wr "  Date:    %date% %time:~0,5%"
 call :wr "========================================"
-call :wr " "
+call :wrb
 call :wr "[ FOLDER ANALYSIS ]"
-call :wr " "
+call :wrb
 
-call :check "Control Survey"              "CONTROL"      "pdf,dgn"
-call :check "RW Map"                      "RW MAP"       "pdf,dgn"
-call :check "Monumentation Map"           "MONUMENT"     "pdf,dgn"
+call :check "Control Survey"              "CONTROL"      "pdf dgn"
+call :check "RW Map"                      "RW MAP"       "pdf dgn"
+call :check "Monumentation Map"           "MONUMENT"     "pdf dgn"
 call :check "GPK"                         "GPK"          "gpk"
 call :check "QAQC"                        "QAQC"         "*"
 call :check "Research"                    "RESEARCH"     "pdf"
-call :check "Aerials"                     "AERIAL"       "sdw,sid,xml"
+call :check "Aerials"                     "AERIAL"       "sdw sid xml"
 call :check "Surveyor's Report"           "SURVEYOR"     "pdf"
-call :check "Roadway"                     "ROADWAY"      "dgn,pdf"
-call :check "Field Data"                  "FIELD"        "txt,pdf"
+call :check "Roadway"                     "ROADWAY"      "dgn pdf"
+call :check "Field Data"                  "FIELD"        "txt pdf"
 call :check "CCR"                         "CCR"          "pdf"
-call :check "XYZ Printout"               "XYZ"          "txt,xls,xlsx"
+call :check "XYZ Printout"               "XYZ"          "txt xls xlsx"
 call :check "Baseline Report"             "BASELINE"     "txt"
 call :check "Plats"                       "PLAT"         "pdf"
 call :check "Tentative Sec. Maps"         "TENTATIVE"    "pdf"
 call :check "Deeds"                       "DEED"         "pdf"
-call :check "Fieldbook & Survey Database" "FIELDBOOK"    "txt,pdf"
-call :check "Worksheets"                  "WORKSHEET"    "dgn,pdf"
+call :check "Fieldbook & Survey Database" "FIELDBOOK"    "txt pdf"
+call :check "Worksheets"                  "WORKSHEET"    "dgn pdf"
 
 set /a score=present*100/total_expected
 
-call :wr " "
+call :wrb
 call :wr "========================================"
 call :wr "  SUMMARY"
 call :wr "========================================"
@@ -64,9 +64,9 @@ call :wr "  Folders with correct content : !present!/!total_expected!"
 call :wr "  Folders empty                : !empty!"
 call :wr "  Folders missing              : !missing!"
 call :wr "  Folders with unexpected files: !alerts!"
-call :wr " "
+call :wrb
 call :wr "  COMPLETION: !score!%%"
-call :wr " "
+call :wrb
 
 if !score!==100 (
     call :wr "  STATUS: DELIVERY COMPLETE"
@@ -79,7 +79,7 @@ if !score!==100 (
 )
 
 call :wr "========================================"
-call :wr " "
+call :wrb
 call :wr "  Report saved to: !REPORT!"
 
 type "!REPORT!"
@@ -121,22 +121,15 @@ for /r . %%F in (*.*) do (
     if not "!fext!"=="" (
         set "fext=!fext:~1!"
         call :lower fext
-        if "%exts%"=="*" (
+        call :matchext "!fext!" "%exts%" ismatch
+        if "!ismatch!"=="1" (
             set /a ok_files+=1
             echo !ok_exts! | findstr /i "!fext!" >nul 2>&1
             if !errorlevel!==1 set "ok_exts=!ok_exts! .!fext!"
         ) else (
-            set "matched=0"
-            for %%E in (%exts:,= %) do if /i "!fext!"=="%%E" set "matched=1"
-            if "!matched!"=="1" (
-                set /a ok_files+=1
-                echo !ok_exts! | findstr /i "!fext!" >nul 2>&1
-                if !errorlevel!==1 set "ok_exts=!ok_exts! .!fext!"
-            ) else (
-                set /a diff_files+=1
-                echo !diff_exts! | findstr /i "!fext!" >nul 2>&1
-                if !errorlevel!==1 set "diff_exts=!diff_exts! .!fext!"
-            )
+            set /a diff_files+=1
+            echo !diff_exts! | findstr /i "!fext!" >nul 2>&1
+            if !errorlevel!==1 set "diff_exts=!diff_exts! .!fext!"
         )
     )
 )
@@ -154,9 +147,17 @@ if !total_files!==0 (
         set /a present+=1
     )
 ) else (
-    call :wr "  [ALERT]        %catname% - !total_files! files found but NONE match expected (%exts%) | found:!diff_exts!"
+    call :wr "  [ALERT]        %catname% - !total_files! files, none match expected (%exts%) | found:!diff_exts!"
     set /a alerts+=1
 )
+exit /b
+
+
+:: ─────────────────────────────────────────────────────────────────────────────
+:matchext
+set "%~3=0"
+if "%~2"=="*" ( set "%~3=1" & exit /b )
+for %%E in (%~2) do if /i "%~1"=="%%E" set "%~3=1"
 exit /b
 
 
@@ -166,7 +167,13 @@ echo %~1
 echo %~1>> "!REPORT!"
 exit /b
 
+:wrb
+echo.
+echo.>> "!REPORT!"
+exit /b
 
+
+:: ─────────────────────────────────────────────────────────────────────────────
 :lower
 for %%A in (a b c d e f g h i j k l m n o p q r s t u v w x y z) do set "%1=!%1:%%A=%%A!"
 exit /b
