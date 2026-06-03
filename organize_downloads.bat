@@ -16,6 +16,8 @@ set folders_moved=0
 for %%F in ("%DOWNLOADS%\*.*") do (
     set "filename=%%~nxF"
     set "ext=%%~xF"
+    :: Skip the script itself to avoid moving it mid-execution
+    if /i "%%~fF"=="%~f0" ( echo   [SKIP] !filename! - this script & goto :continue_loop )
     if not "!ext!"=="" (
         set "ext=!ext:~1!"
         call :tolower ext
@@ -34,6 +36,7 @@ for %%F in ("%DOWNLOADS%\*.*") do (
         echo   [FILE] !filename! -^> !dest!\
         set /a moved+=1
     )
+    :continue_loop
 )
 
 :: ─── ORGANIZAR SUBCARPETAS POR CONTENIDO (80%%) ───────────────────────────────
