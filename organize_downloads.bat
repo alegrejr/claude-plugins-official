@@ -12,7 +12,6 @@ if not exist "%DOWNLOADS%" (
 set moved=0
 set folders_moved=0
 
-:: ─── ORGANIZAR ARCHIVOS SUELTOS ───────────────────────────────────────────────
 for %%F in ("%DOWNLOADS%\*.*") do (
     set "filename=%%~nxF"
     set "ext=%%~xF"
@@ -23,10 +22,8 @@ for %%F in ("%DOWNLOADS%\*.*") do (
         set "ext=!ext:~1!"
         call :tolower ext
         call :get_category "!ext!" dest
-
         set "destpath=%DOWNLOADS%\!dest!"
         if not exist "!destpath!" mkdir "!destpath!"
-
         if exist "!destpath!\!filename!" (
             set "ts=%time:~0,2%%time:~3,2%%time:~6,2%"
             set "ts=!ts: =0!"
@@ -34,16 +31,13 @@ for %%F in ("%DOWNLOADS%\*.*") do (
         ) else (
             move "%%F" "!destpath!\!filename!" >nul
         )
-        echo   [FILE] !filename! -^> !dest!\
+        echo   [FILE] !filename! moved to !dest!
         set /a moved+=1
     )
 )
 
-:: ─── ORGANIZAR SUBCARPETAS POR CONTENIDO (80%%) ───────────────────────────────
 for /d %%D in ("%DOWNLOADS%\*") do (
     set "dirname=%%~nxD"
-
-    :: Saltar las carpetas de destino que ya creamos
     set "is_dest=0"
     for %%C in (Images Videos Audio Documents Spreadsheets Presentations Compressed Installers Code Torrents Others) do (
         if /i "!dirname!"=="%%C" set "is_dest=1"
@@ -54,7 +48,7 @@ for /d %%D in ("%DOWNLOADS%\*") do (
             set "destpath=%DOWNLOADS%\!dominant_cat!"
             if not exist "!destpath!" mkdir "!destpath!"
             move "%%D" "!destpath!\!dirname!" >nul
-            echo   [FOLDER] !dirname! (!dominant_pct!%% !dominant_cat!) -^> !dominant_cat!\
+            echo   [FOLDER] !dirname! !dominant_pct!%% !dominant_cat!
             set /a folders_moved+=1
         ) else (
             echo   [FOLDER] !dirname! - mixed content, left in place
@@ -68,7 +62,6 @@ pause
 exit /b 0
 
 
-:: ─── SUBROUTINE: get category from extension ─────────────────────────────────
 :get_category
 set "e=%~1"
 set "%~2=Others"
@@ -85,7 +78,6 @@ for %%E in (torrent) do if /i "%e%"=="%%E" ( set "%~2=Torrents" & exit /b )
 exit /b
 
 
-:: ─── SUBROUTINE: analyze folder content ──────────────────────────────────────
 :analyze_folder
 set "folder=%~1"
 set "total=0"
@@ -112,7 +104,6 @@ for /r "%folder%" %%F in (*.*) do (
 
 if %total%==0 ( set "%~2=Others" & set "%~3=0" & exit /b )
 
-:: Find dominant category
 set "best_cat=Others"
 set "best_count=0"
 for %%C in (Images Videos Audio Documents Spreadsheets Presentations Compressed Installers Code) do (
@@ -128,7 +119,6 @@ set "%~3=!pct!"
 exit /b
 
 
-:: ─── SUBROUTINE: lowercase ───────────────────────────────────────────────────
 :tolower
 for %%A in (a b c d e f g h i j k l m n o p q r s t u v w x y z) do set "%1=!%1:%%A=%%A!"
 exit /b
