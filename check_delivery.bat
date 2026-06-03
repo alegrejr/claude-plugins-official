@@ -24,15 +24,16 @@ set "present=0"
 set "empty=0"
 set "missing=0"
 set "alerts=0"
+set "total_expected=18"
 
 call :wr "========================================"
 call :wr "  DELIVERY CHECK REPORT"
 call :wr "  Project: !DELIVERY!"
 call :wr "  Date:    %date% %time:~0,5%"
 call :wr "========================================"
-call :wr ""
+call :wr " "
 call :wr "[ FOLDER ANALYSIS ]"
-call :wr ""
+call :wr " "
 
 call :check "Control Survey"              "CONTROL"      "pdf,dgn"
 call :check "RW Map"                      "RW MAP"       "pdf,dgn"
@@ -53,10 +54,9 @@ call :check "Deeds"                       "DEED"         "pdf"
 call :check "Fieldbook & Survey Database" "FIELDBOOK"    "txt,pdf"
 call :check "Worksheets"                  "WORKSHEET"    "dgn,pdf"
 
-set "total_expected=18"
 set /a score=present*100/total_expected
 
-call :wr ""
+call :wr " "
 call :wr "========================================"
 call :wr "  SUMMARY"
 call :wr "========================================"
@@ -64,9 +64,9 @@ call :wr "  Folders with correct content : !present!/!total_expected!"
 call :wr "  Folders empty                : !empty!"
 call :wr "  Folders missing              : !missing!"
 call :wr "  Folders with unexpected files: !alerts!"
-call :wr ""
+call :wr " "
 call :wr "  COMPLETION: !score!%%"
-call :wr ""
+call :wr " "
 
 if !score!==100 (
     call :wr "  STATUS: DELIVERY COMPLETE"
@@ -79,8 +79,8 @@ if !score!==100 (
 )
 
 call :wr "========================================"
-call :wr ""
-call :wr "Report saved to: !REPORT!"
+call :wr " "
+call :wr "  Report saved to: !REPORT!"
 
 type "!REPORT!"
 echo.
@@ -89,7 +89,7 @@ pause
 exit /b 0
 
 
-:: ── CHECK CATEGORY ──────────────────────────────────────────────────────────
+:: ─────────────────────────────────────────────────────────────────────────────
 :check
 set "catname=%~1"
 set "keyword=%~2"
@@ -112,8 +112,10 @@ set "total_files=0"
 set "ok_files=0"
 set "diff_files=0"
 set "diff_exts="
+set "ok_exts="
 
-for /r "!found_folder!" %%F in (*.*) do (
+pushd "!found_folder!"
+for /r . %%F in (*.*) do (
     set /a total_files+=1
     set "fext=%%~xF"
     if not "!fext!"=="" (
@@ -121,11 +123,15 @@ for /r "!found_folder!" %%F in (*.*) do (
         call :lower fext
         if "%exts%"=="*" (
             set /a ok_files+=1
+            echo !ok_exts! | findstr /i "!fext!" >nul 2>&1
+            if !errorlevel!==1 set "ok_exts=!ok_exts! .!fext!"
         ) else (
             set "matched=0"
             for %%E in (%exts:,= %) do if /i "!fext!"=="%%E" set "matched=1"
             if "!matched!"=="1" (
                 set /a ok_files+=1
+                echo !ok_exts! | findstr /i "!fext!" >nul 2>&1
+                if !errorlevel!==1 set "ok_exts=!ok_exts! .!fext!"
             ) else (
                 set /a diff_files+=1
                 echo !diff_exts! | findstr /i "!fext!" >nul 2>&1
@@ -134,33 +140,33 @@ for /r "!found_folder!" %%F in (*.*) do (
         )
     )
 )
+popd
 
 if !total_files!==0 (
     call :wr "  [EMPTY]        %catname% - folder found but no files inside"
     set /a empty+=1
 ) else if !ok_files! gtr 0 (
     if !diff_files! gtr 0 (
-        call :wr "  [OK+ALERT]    %catname% (!total_files! files - also found:!diff_exts!)"
+        call :wr "  [OK+ALERT]    %catname% (!total_files! files | expected:!ok_exts! | also found:!diff_exts!)"
         set /a present+=1
     ) else (
-        call :wr "  [OK]          %catname% (!total_files! files)"
+        call :wr "  [OK]          %catname% (!total_files! files |!ok_exts!)"
         set /a present+=1
     )
 ) else (
-    call :wr "  [ALERT]        %catname% - !total_files! files found but none match expected (%exts%) - found:!diff_exts!"
+    call :wr "  [ALERT]        %catname% - !total_files! files found but NONE match expected (%exts%) | found:!diff_exts!"
     set /a alerts+=1
 )
 exit /b
 
 
-:: ── WRITE REPORT LINE ────────────────────────────────────────────────────────
+:: ─────────────────────────────────────────────────────────────────────────────
 :wr
 echo %~1
 echo %~1>> "!REPORT!"
 exit /b
 
 
-:: ── LOWERCASE ────────────────────────────────────────────────────────────────
 :lower
 for %%A in (a b c d e f g h i j k l m n o p q r s t u v w x y z) do set "%1=!%1:%%A=%%A!"
 exit /b
